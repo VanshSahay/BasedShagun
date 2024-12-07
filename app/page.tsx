@@ -1,21 +1,32 @@
 "use client";
-// app/create/page.tsx
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { nanoid } from "nanoid";
 import { useAccount } from "wagmi";
 import { useShagunContract } from "@/app/hooks/useShagunContract";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { motion, AnimatePresence } from "framer-motion";
+import { Mail } from "lucide-react";
+import BackgroundAnimations from "@/app/components/Background-animations";
+
+const indianLanguages = [
+    { name: "English", text: "Shagun", font: "" },
+    { name: "Hindi", text: "शगुन", font: "font-devanagari" },
+    { name: "Tamil", text: "சகுன்", font: "font-tamil" },
+    { name: "Telugu", text: "శఖున్", font: "font-telugu" },
+    { name: "Bengali", text: "শগুন", font: "font-bengali" },
+    { name: "Malayalam", text: "ശഗുൻ", font: "font-malayalam" },
+];
 
 export default function CreateDistribution() {
     const [amount, setAmount] = useState("");
     const [recipientCount, setRecipientCount] = useState(1);
     const [baseNames, setBaseNames] = useState([""]);
-    const [verifyBaseName, setVerifyBaseName] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState("");
     const [links, setLinks] = useState<string[]>([]);
     const [transactionHash, setTransactionHash] = useState("");
+    const [currentLang, setCurrentLang] = useState(0);
 
     const { address, isConnected } = useAccount();
     const { createDistribution, verifyDistribution, isWritePending } =
@@ -49,7 +60,6 @@ export default function CreateDistribution() {
             setIsLoading(true);
             const id = nanoid();
 
-            // Input validation
             if (!amount || parseFloat(amount) <= 0) {
                 throw new Error("Invalid amount");
             }
@@ -58,25 +68,21 @@ export default function CreateDistribution() {
                 throw new Error("All base names must be filled");
             }
 
-            // Create distribution
             const { hash, distributionId } = await createDistribution(
                 id,
                 baseNames,
-                verifyBaseName,
+                true, // Always verify base names
                 amount
             );
 
             setTransactionHash(hash);
 
-            // Wait for transaction to be mined
             await new Promise((resolve) => setTimeout(resolve, 5000));
 
             try {
                 const distributionInfo = await verifyDistribution(
                     distributionId
                 );
-
-                // Generate claim links only after verification
                 const newLinks = baseNames.map(
                     (_, index) =>
                         `${window.location.origin}/claim/${distributionId}/${index}`
@@ -96,129 +102,185 @@ export default function CreateDistribution() {
         }
     };
 
+    // Language rotation effect
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setCurrentLang((prev) => (prev + 1) % indianLanguages.length);
+        }, 2000);
+
+        return () => clearInterval(interval);
+    }, []);
+
     return (
-        <div className="max-w-2xl mx-auto p-6">
-            <h1 className="text-3xl font-bold mb-6">
-                Create Shagun Distribution
-            </h1>
-
-            <ConnectButton />
-
-            {transactionHash && (
-                <div className="mb-4 p-4 bg-green-100 rounded">
-                    <p>Transaction submitted: </p>
-                    <a
-                        href={`https://base-sepolia.blockscout.com/tx/${transactionHash}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800 break-all"
+        <div className="min-h-screen bg-gradient-to-br from-[#0051FF] to-[#3B82F6] flex flex-col items-center justify-center overflow-hidden relative">
+            <BackgroundAnimations />
+            <motion.div
+                className="text-center bg-white/10 backdrop-blur-md p-12 rounded-3xl shadow-2xl border border-white/20 relative z-10 max-w-2xl w-full"
+                initial={{ opacity: 0, y: -100, rotateX: 50 }}
+                animate={{ opacity: 1, y: 0, rotateX: 0 }}
+                transition={{ duration: 1, ease: "easeOut" }}
+            >
+                <div className="flex justify-center items-center mb-4">
+                    <motion.div
+                        className="text-6xl font-bold text-white mr-4"
+                        initial={{ opacity: 0, x: -50 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{
+                            duration: 0.8,
+                            delay: 0.2,
+                            ease: "easeOut",
+                        }}
                     >
-                        {transactionHash}
-                    </a>
-                </div>
-            )}
+                        Based
+                    </motion.div>
 
-            {error && (
-                <div className="mb-4 p-4 bg-red-100 text-red-700 rounded">
-                    {error}
-                </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
-                    <label className="block text-sm font-medium mb-2">
-                        Total Amount (ETH)
-                    </label>
-                    <input
-                        type="number"
-                        step="0.000000000000000001"
-                        value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
-                        className="w-full px-3 py-2 border rounded-md"
-                        required
-                    />
-                </div>
-
-                <div>
-                    <label className="block text-sm font-medium mb-2">
-                        Number of Recipients
-                    </label>
-                    <input
-                        type="number"
-                        min="1"
-                        value={recipientCount}
-                        onChange={(e) =>
-                            updateRecipientCount(Number(e.target.value))
-                        }
-                        className="w-full px-3 py-2 border rounded-md"
-                        required
-                    />
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={currentLang}
+                            className={`text-6xl font-bold ${indianLanguages[currentLang].font} text-white inline-block`}
+                            initial={{
+                                opacity: 0,
+                                y: 50,
+                                scale: 0.9,
+                                width: 0,
+                            }}
+                            animate={{
+                                opacity: 1,
+                                y: 0,
+                                scale: 1,
+                                width: "auto",
+                            }}
+                            exit={{ opacity: 0, y: -50, scale: 0.9, width: 0 }}
+                            transition={{ duration: 0.8, ease: "easeInOut" }}
+                        >
+                            {indianLanguages[currentLang].text}
+                        </motion.div>
+                    </AnimatePresence>
                 </div>
 
-                <div>
-                    <label className="block text-sm font-medium mb-2">
-                        Verify Base Names
-                    </label>
-                    <input
-                        type="checkbox"
-                        checked={verifyBaseName}
-                        onChange={(e) => setVerifyBaseName(e.target.checked)}
-                        className="mr-2"
-                    />
-                    <span className="text-sm text-gray-600">
-                        Recipients must verify their Base name to claim
-                    </span>
+                <div className="mb-6">
+                    <ConnectButton />
                 </div>
 
-                <div className="space-y-4">
-                    <label className="block text-sm font-medium">
-                        Recipient Base Names
-                    </label>
-                    {baseNames.map((name, index) => (
+                {transactionHash && (
+                    <div className="mb-4 p-4 bg-white/20 rounded">
+                        <p className="text-white">Transaction submitted: </p>
+                        <a
+                            href={`https://base-sepolia.blockscout.com/tx/${transactionHash}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-200 hover:text-blue-100 break-all"
+                        >
+                            {transactionHash}
+                        </a>
+                    </div>
+                )}
+
+                {error && (
+                    <div className="mb-4 p-4 bg-red-500/20 text-red-100 rounded">
+                        {error}
+                    </div>
+                )}
+
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    <div>
+                        <label className="block text-sm font-medium mb-2 text-white">
+                            Total Amount (ETH)
+                        </label>
                         <input
-                            key={index}
-                            value={name}
-                            onChange={(e) =>
-                                handleBaseNameChange(index, e.target.value)
-                            }
-                            placeholder={`Recipient ${index + 1} Base name`}
-                            className="w-full px-3 py-2 border rounded-md"
+                            type="number"
+                            step="0.000000000000000001"
+                            value={amount}
+                            onChange={(e) => setAmount(e.target.value)}
+                            className="w-full px-3 py-2 border rounded-md bg-white/10 border-white/20 text-white"
                             required
                         />
-                    ))}
-                </div>
+                    </div>
 
-                {error && <p className="text-red-500 text-sm">{error}</p>}
+                    <div>
+                        <label className="block text-sm font-medium mb-2 text-white">
+                            Number of Recipients
+                        </label>
+                        <input
+                            type="number"
+                            min="1"
+                            value={recipientCount}
+                            onChange={(e) =>
+                                updateRecipientCount(Number(e.target.value))
+                            }
+                            className="w-full px-3 py-2 border rounded-md bg-white/10 border-white/20 text-white"
+                            required
+                        />
+                    </div>
 
-                <button
-                    type="submit"
-                    disabled={isLoading || isWritePending}
-                    className="w-full px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 disabled:bg-gray-400"
-                >
-                    {isLoading || isWritePending
-                        ? "Creating..."
-                        : "Create Distribution"}
-                </button>
-            </form>
-
-            {links.length > 0 && (
-                <div className="mt-8">
-                    <h2 className="text-xl font-bold mb-4">Claim Links</h2>
-                    <div className="space-y-2">
-                        {links.map((link, index) => (
-                            <div
+                    <div className="space-y-4">
+                        <label className="block text-sm font-medium text-white">
+                            Recipient Base Names
+                        </label>
+                        {baseNames.map((name, index) => (
+                            <input
                                 key={index}
-                                className="p-3 bg-gray-100 rounded"
-                            >
-                                <p className="font-medium">
-                                    Recipient {index + 1}
-                                </p>
-                                <p className="text-sm break-all">{link}</p>
-                            </div>
+                                value={name}
+                                onChange={(e) =>
+                                    handleBaseNameChange(index, e.target.value)
+                                }
+                                placeholder={`Recipient ${index + 1} Base name`}
+                                className="w-full px-3 py-2 border rounded-md bg-white/10 border-white/20 text-white"
+                                required
+                            />
                         ))}
                     </div>
-                </div>
-            )}
+
+                    <motion.button
+                        type="submit"
+                        disabled={isLoading || isWritePending}
+                        className="w-full relative inline-flex items-center justify-center bg-yellow-400 text-blue-900 py-3 px-6 rounded-lg shadow-md 
+                            transition duration-300 ease-in-out
+                            hover:bg-yellow-300 
+                            focus:outline-none focus:ring-2 focus:ring-yellow-500
+                            disabled:bg-gray-400 disabled:cursor-not-allowed
+                            transform hover:scale-105 active:scale-95"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                    >
+                        <div className="flex items-center">
+                            <Mail className="w-5 h-5 mr-2 text-blue-900" />
+                            <span className="font-semibold tracking-wide">
+                                {isLoading || isWritePending
+                                    ? "Creating..."
+                                    : "Create Distribution"}
+                            </span>
+                        </div>
+                    </motion.button>
+                </form>
+
+                {links.length > 0 && (
+                    <motion.div
+                        className="mt-8"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                    >
+                        <h2 className="text-xl font-bold mb-4 text-white">
+                            Claim Links
+                        </h2>
+                        <div className="space-y-2">
+                            {links.map((link, index) => (
+                                <div
+                                    key={index}
+                                    className="p-3 bg-white/10 rounded"
+                                >
+                                    <p className="font-medium text-white">
+                                        Recipient {index + 1}
+                                    </p>
+                                    <p className="text-sm break-all text-blue-200">
+                                        {link}
+                                    </p>
+                                </div>
+                            ))}
+                        </div>
+                    </motion.div>
+                )}
+            </motion.div>
         </div>
     );
 }
