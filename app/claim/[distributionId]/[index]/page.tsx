@@ -1,5 +1,5 @@
 "use client";
-
+// utility file
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
@@ -14,6 +14,7 @@ export default function ClaimPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState("");
     const [isAlreadyClaimed, setIsAlreadyClaimed] = useState(false);
+    const [expectedAddress, setExpectedAddress] = useState("");
     const [distributionInfo, setDistributionInfo] = useState<{
         creator: string;
         amountPerRecipient: bigint;
@@ -22,10 +23,6 @@ export default function ClaimPage() {
     } | null>(null);
     const [transactionHash, setTransactionHash] = useState("");
     const [isSignatureVerified, setIsSignatureVerified] = useState(false);
-
-    // Hardcoded address for now - this would come from your Base name resolver
-    const expectedAddress =
-        "0x85fA1A417d065e6AE2B38bb2e3b35e717edE0AAb".toLowerCase();
 
     const distributionId = params.distributionId as string;
     const recipientIndex = parseInt(params.index as string);
@@ -39,6 +36,55 @@ export default function ClaimPage() {
     } = useShagunContract();
 
     const { signMessageAsync } = useSignMessage();
+
+    const fetchHtmlAndExtract = async (baseName: string) => {
+        try {
+            const response = await fetch(
+                `https://cors-anywhere.herokuapp.com/https://basescan.org/name-lookup-search?id=${baseName}`,
+                {
+                    method: "GET",
+                    headers: {
+                        accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+                        "accept-language": "en-US,en;q=0.9",
+                        "cache-control": "max-age=0",
+                        cookie: "ASP.NET_SessionId=feoefocra04fbqnjdvszh20c; basescan_switch_token_amount_value=value; cf_clearance=VKIbeJ9t7Njel37PiFqjSHO.flMeQiEVfxALUPb1A6Q-1731032345-1.2.1.1-.u58OI4dwloKSQeP1Zz6RdvVrXlfZMmGNEDqC36t8b0BJxfb.aPuNMf2atHFVhl5MBHFhtpzqer.CLnnowpDUUF.erUf4WhLDQvFzj8OllD4Vv_6cdOniTSPXPOP0SMC9mAK5Kfc64NTW1s6TgRfnKF84qik.Tf_zDpQcsLeU97ZegBNV7eguA7sV_EVL81dl7SGF_e1sAq.vtcW_lpFCbZwRyFVzt2SNSK54O6gIy4FBXHtHFZzO9JJRUsgh9UpAVAGjKINqanunLQBJDMwQ6Qp7kB.ow8tUYrxZFr0J_LgA12DOTDIoVgn5SKIGB1hzGokYTemN1RL5DZ1z.1dkIAFjZeJKJNmMh5zWuLnb3Eq24YZLnNae9Q0aUXL5IxJnhV98nFUEZcRF8_slUzd5kPhBH1No67TWLLdveqslCE69OMDHZX9jOEJwxbTuRYb; basescan_pwd=4792:Qdxb:JnSaGTfjtdaESCnHwKYQyez3eEW52tE3kb9Ma4a1cP51JnKDpJfXsmCFO6GMM0+u; basescan_userid=pranav; basescan_autologin=True; __cflb=02DiuJ1fCRi484mKRwML12UraygpucsyTWc9pZJeZ3Txx; basescan_offset_datetime=+5.5",
+                        dnt: "1",
+                        priority: "u=0, i",
+                        referer: "https://basescan.org/",
+                        "sec-ch-ua": '"Chromium";v="131", "Not_A Brand";v="24"',
+                        "sec-ch-ua-arch": '"arm"',
+                        "sec-ch-ua-bitness": '"64"',
+                        "sec-ch-ua-full-version": '"131.0.6778.86"',
+                        "sec-ch-ua-full-version-list":
+                            '"Chromium";v="131.0.6778.86", "Not_A Brand";v="24.0.0.0"',
+                        "sec-ch-ua-mobile": "?0",
+                        "sec-ch-ua-model": '""',
+                        "sec-ch-ua-platform": '"macOS"',
+                        "sec-ch-ua-platform-version": '"15.1.0"',
+                        "sec-fetch-dest": "document",
+                        "sec-fetch-mode": "navigate",
+                        "sec-fetch-site": "same-origin",
+                        "sec-fetch-user": "?1",
+                        "upgrade-insecure-requests": "1",
+                        "user-agent":
+                            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+                    },
+                }
+            );
+
+            const text = await response.text();
+            const regex = /<span id="spanBSCAddress">([\s\S]*?)<\/span>/;
+            const match = text.match(regex);
+
+            if (match && match[1]) {
+                return match[1].toLowerCase();
+            }
+            throw new Error("Base name resolution failed");
+        } catch (error) {
+            console.error("Error fetching HTML:", error);
+            throw error;
+        }
+    };
 
     useEffect(() => {
         const checkDistributionStatus = async () => {
@@ -64,6 +110,12 @@ export default function ClaimPage() {
 
                 const name = await getBaseName(distributionId, recipientIndex);
                 setBaseName(name || "");
+
+                // Resolve Base name to address
+                if (name) {
+                    const resolvedAddress = await fetchHtmlAndExtract(name);
+                    setExpectedAddress(resolvedAddress);
+                }
             } catch (err: any) {
                 console.error("Error checking distribution:", err);
                 setError("Failed to load distribution information");
@@ -83,10 +135,10 @@ export default function ClaimPage() {
                 throw new Error("Please connect your wallet first");
             }
 
-            // Check if connected wallet matches expected address
+            // Check if connected wallet matches resolved address
             if (address.toLowerCase() !== expectedAddress) {
                 throw new Error(
-                    "Connected wallet is not authorized to claim this share"
+                    "Connected wallet does not match the Base name"
                 );
             }
 
@@ -124,7 +176,7 @@ export default function ClaimPage() {
         }
 
         if (address?.toLowerCase() !== expectedAddress) {
-            setError("Connected wallet is not authorized to claim this share");
+            setError("Connected wallet does not match the Base name");
             return;
         }
 
@@ -218,10 +270,7 @@ export default function ClaimPage() {
 
                     {address && address.toLowerCase() !== expectedAddress && (
                         <div className="mb-4 p-4 bg-red-100 dark:bg-red-900 rounded">
-                            <p>
-                                Connected wallet is not authorized to claim this
-                                share
-                            </p>
+                            <p>Connected wallet does not match the Base name</p>
                         </div>
                     )}
 
@@ -255,7 +304,7 @@ export default function ClaimPage() {
                                         ? "Connect Wallet to Verify"
                                         : address?.toLowerCase() !==
                                           expectedAddress
-                                        ? "Connect Authorized Wallet"
+                                        ? "Connect Wallet Matching Base Name"
                                         : "Verify Wallet Ownership"}
                                 </button>
                             ) : (
