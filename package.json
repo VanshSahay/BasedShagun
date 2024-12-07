@@ -11,7 +11,9 @@
   "dependencies": {
     "@coinbase/onchainkit": "latest",
     "@tanstack/react-query": "^5",
+    "cheerio": "^1.0.0",
     "framer-motion": "^11.13.1",
+    "jsdom": "^25.0.1",
     "lucide-react": "^0.468.0",
     "next": "14.2.15",
     "react": "^18",
