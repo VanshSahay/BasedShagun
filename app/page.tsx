@@ -1,10 +1,11 @@
-// app/create/page.tsx
 "use client";
+// app/create/page.tsx
 
 import { useState } from "react";
 import { nanoid } from "nanoid";
-import { useWaitForTransactionReceipt } from "wagmi";
+import { useAccount } from "wagmi";
 import { useShagunContract } from "@/app/hooks/useShagunContract";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
 
 export default function CreateDistribution() {
     const [amount, setAmount] = useState("");
@@ -13,10 +14,12 @@ export default function CreateDistribution() {
     const [verifyBaseName, setVerifyBaseName] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState("");
-    const [distributionId, setDistributionId] = useState("");
     const [links, setLinks] = useState<string[]>([]);
+    const [transactionHash, setTransactionHash] = useState("");
 
-    const { createDistribution, isWritePending } = useShagunContract();
+    const { address, isConnected } = useAccount();
+    const { createDistribution, verifyDistribution, isWritePending } =
+        useShagunContract();
 
     const handleBaseNameChange = (index: number, value: string) => {
         const newBaseNames = [...baseNames];
@@ -35,27 +38,59 @@ export default function CreateDistribution() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
-        setIsLoading(true);
+        setTransactionHash("");
+
+        if (!isConnected) {
+            setError("Please connect your wallet first");
+            return;
+        }
 
         try {
+            setIsLoading(true);
             const id = nanoid();
-            const tx = await createDistribution(
+
+            // Input validation
+            if (!amount || parseFloat(amount) <= 0) {
+                throw new Error("Invalid amount");
+            }
+
+            if (!baseNames.every((name) => name.trim())) {
+                throw new Error("All base names must be filled");
+            }
+
+            // Create distribution
+            const { hash, distributionId } = await createDistribution(
                 id,
                 baseNames,
                 verifyBaseName,
                 amount
             );
 
-            setDistributionId(id);
+            setTransactionHash(hash);
 
-            // Generate claim links
-            const newLinks = baseNames.map(
-                (_, index) => `${window.location.origin}/claim/${id}/${index}`
-            );
-            setLinks(newLinks);
-        } catch (err) {
-            console.error("Error creating distribution:", err);
-            setError("Failed to create distribution. Please try again.");
+            // Wait for transaction to be mined
+            await new Promise((resolve) => setTimeout(resolve, 5000));
+
+            try {
+                const distributionInfo = await verifyDistribution(
+                    distributionId
+                );
+
+                // Generate claim links only after verification
+                const newLinks = baseNames.map(
+                    (_, index) =>
+                        `${window.location.origin}/claim/${distributionId}/${index}`
+                );
+                setLinks(newLinks);
+            } catch (verifyError) {
+                console.error("Failed to verify distribution:", verifyError);
+                setError(
+                    "Transaction submitted but distribution not found. Please check the transaction hash."
+                );
+            }
+        } catch (err: any) {
+            console.error("Create distribution failed:", err);
+            setError(err.message || "Failed to create distribution");
         } finally {
             setIsLoading(false);
         }
@@ -66,6 +101,28 @@ export default function CreateDistribution() {
             <h1 className="text-3xl font-bold mb-6">
                 Create Shagun Distribution
             </h1>
+
+            <ConnectButton />
+
+            {transactionHash && (
+                <div className="mb-4 p-4 bg-green-100 rounded">
+                    <p>Transaction submitted: </p>
+                    <a
+                        href={`https://base-sepolia.blockscout.com/tx/${transactionHash}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-800 break-all"
+                    >
+                        {transactionHash}
+                    </a>
+                </div>
+            )}
+
+            {error && (
+                <div className="mb-4 p-4 bg-red-100 text-red-700 rounded">
+                    {error}
+                </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
                 <div>

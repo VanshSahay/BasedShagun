@@ -1,126 +1,107 @@
 // hooks/useShagunContract.ts
-import {
-    useWriteContract,
-    useReadContract,
-    useWaitForTransactionReceipt,
-} from "wagmi";
+import { useWriteContract, useReadContract } from "wagmi";
 import { parseEther } from "viem";
-
-const SHAGUN_CONTRACT_ADDRESS = "0x0FdEf0cFD9E787315746498ec4AC8822F6449ef9";
-
-// Contract ABI - Add this to a separate file in production
-const SHAGUN_ABI = [
-    {
-        inputs: [
-            { name: "distributionId", type: "string" },
-            { name: "baseNames", type: "string[]" },
-            { name: "verifyBaseName", type: "bool" },
-        ],
-        name: "createDistribution",
-        outputs: [],
-        stateMutability: "payable",
-        type: "function",
-    },
-    {
-        inputs: [
-            { name: "distributionId", type: "string" },
-            { name: "recipientIndex", type: "uint256" },
-            { name: "baseName", type: "string" },
-        ],
-        name: "claimShare",
-        outputs: [],
-        stateMutability: "nonpayable",
-        type: "function",
-    },
-    {
-        inputs: [{ name: "distributionId", type: "string" }],
-        name: "getDistributionInfo",
-        outputs: [
-            { name: "creator", type: "address" },
-            { name: "amountPerRecipient", type: "uint256" },
-            { name: "verifyBaseName", type: "bool" },
-            { name: "recipientCount", type: "uint256" },
-        ],
-        stateMutability: "view",
-        type: "function",
-    },
-    {
-        inputs: [
-            { name: "distributionId", type: "string" },
-            { name: "index", type: "uint256" },
-        ],
-        name: "isShareClaimed",
-        outputs: [{ name: "", type: "bool" }],
-        stateMutability: "view",
-        type: "function",
-    },
-] as const;
+import { SHAGUN_ABI, SHAGUN_CONTRACT_ADDRESS } from "@/app/lib/shagunABI";
+import { useState } from "react";
 
 export function useShagunContract() {
-    const { writeContract, isPending: isWritePending } = useWriteContract();
+    const [currentDistributionId, setCurrentDistributionId] = useState<
+        string | null
+    >(null);
 
-    // Create a new distribution
+    const {
+        writeContractAsync,
+        isPending: isWritePending,
+        error: writeError,
+    } = useWriteContract();
+
+    // Set up read contract with dynamic args
+    const { data: distributionData, refetch } = useReadContract({
+        address: SHAGUN_CONTRACT_ADDRESS,
+        abi: SHAGUN_ABI,
+        functionName: "getDistributionInfo",
+        args: currentDistributionId ? [currentDistributionId] : undefined,
+        query: {
+            enabled: Boolean(currentDistributionId),
+        },
+    });
+
     const createDistribution = async (
         distributionId: string,
         baseNames: string[],
         verifyBaseName: boolean,
         totalAmount: string
     ) => {
-        if (!baseNames.length)
+        if (!baseNames.length) {
             throw new Error("Must have at least one recipient");
+        }
 
-        const tx = await writeContract({
-            address: SHAGUN_CONTRACT_ADDRESS,
-            abi: SHAGUN_ABI,
-            functionName: "createDistribution",
-            args: [distributionId, baseNames, verifyBaseName],
-            value: parseEther(totalAmount),
-        });
+        try {
+            console.log("Creating distribution with params:", {
+                distributionId,
+                baseNames,
+                verifyBaseName,
+                totalAmount,
+            });
 
-        return tx;
+            const amountInWei = parseEther(totalAmount);
+
+            const txParams = {
+                address: SHAGUN_CONTRACT_ADDRESS,
+                abi: SHAGUN_ABI,
+                functionName: "createDistribution",
+                args: [distributionId, baseNames, verifyBaseName],
+                value: amountInWei,
+            };
+
+            console.log("Transaction parameters:", txParams);
+
+            const hash = await writeContractAsync({
+                address: SHAGUN_CONTRACT_ADDRESS,
+                abi: SHAGUN_ABI,
+                functionName: "createDistribution",
+                args: [distributionId, baseNames, verifyBaseName],
+                value: amountInWei,
+            });
+            console.log("Transaction hash:", hash);
+
+            return {
+                hash,
+                distributionId,
+            };
+        } catch (error: any) {
+            console.error("Distribution creation failed:", {
+                error,
+                message: error.message,
+                code: error.code,
+                details: error.details,
+                distributionId,
+                baseNames,
+                verifyBaseName,
+                totalAmount,
+            });
+            throw error;
+        }
     };
 
-    // Claim a share
-    const claimShare = async (
-        distributionId: string,
-        recipientIndex: number,
-        baseName: string
-    ) => {
-        const tx = await writeContract({
-            address: SHAGUN_CONTRACT_ADDRESS,
-            abi: SHAGUN_ABI,
-            functionName: "claimShare",
-            args: [distributionId, BigInt(recipientIndex), baseName],
-        });
+    const verifyDistribution = async (distributionId: string) => {
+        // Update the distribution ID to trigger a new read
+        setCurrentDistributionId(distributionId);
+        // Refetch the data
+        const result = await refetch();
 
-        return tx;
-    };
+        if (!result.data) {
+            throw new Error("Distribution not found");
+        }
 
-    // Get distribution info
-    const useDistributionInfo = (distributionId: string) => {
-        return useReadContract({
-            address: SHAGUN_CONTRACT_ADDRESS,
-            abi: SHAGUN_ABI,
-            functionName: "getDistributionInfo",
-            args: [distributionId],
-        });
-    };
-
-    // Check if share is claimed
-    const useIsShareClaimed = (distributionId: string, index: number) => {
-        return useReadContract({
-            address: SHAGUN_CONTRACT_ADDRESS,
-            abi: SHAGUN_ABI,
-            functionName: "isShareClaimed",
-            args: [distributionId, BigInt(index)],
-        });
+        return result.data;
     };
 
     return {
         createDistribution,
-        claimShare,
-        useDistributionInfo,
-        useIsShareClaimed,
+        verifyDistribution,
         isWritePending,
+        writeError,
+        distributionData,
     };
 }
