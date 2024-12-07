@@ -1,11 +1,22 @@
 "use client";
-// utility file
+
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount, useSignMessage } from "wagmi";
 import { useShagunContract } from "@/app/hooks/useShagunContract";
 import { verifyMessage, formatEther } from "viem";
+import { motion } from "framer-motion";
+import BackgroundAnimations from "../../../components/Background-animations";
+import { ArrowRight, MailOpen } from "lucide-react";
+
+// Define the type for distribution info
+interface DistributionInfo {
+    creator: string;
+    amountPerRecipient: bigint;
+    verifyBaseName: boolean;
+    recipientCount: number;
+}
 
 export default function ClaimPage() {
     const params = useParams();
@@ -15,12 +26,8 @@ export default function ClaimPage() {
     const [error, setError] = useState("");
     const [isAlreadyClaimed, setIsAlreadyClaimed] = useState(false);
     const [expectedAddress, setExpectedAddress] = useState("");
-    const [distributionInfo, setDistributionInfo] = useState<{
-        creator: string;
-        amountPerRecipient: bigint;
-        verifyBaseName: boolean;
-        recipientCount: number;
-    } | null>(null);
+    const [distributionInfo, setDistributionInfo] =
+        useState<DistributionInfo | null>(null);
     const [transactionHash, setTransactionHash] = useState("");
     const [isSignatureVerified, setIsSignatureVerified] = useState(false);
 
@@ -47,27 +54,11 @@ export default function ClaimPage() {
                         accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
                         "accept-language": "en-US,en;q=0.9",
                         "cache-control": "max-age=0",
-                        cookie: "ASP.NET_SessionId=feoefocra04fbqnjdvszh20c; basescan_switch_token_amount_value=value; cf_clearance=VKIbeJ9t7Njel37PiFqjSHO.flMeQiEVfxALUPb1A6Q-1731032345-1.2.1.1-.u58OI4dwloKSQeP1Zz6RdvVrXlfZMmGNEDqC36t8b0BJxfb.aPuNMf2atHFVhl5MBHFhtpzqer.CLnnowpDUUF.erUf4WhLDQvFzj8OllD4Vv_6cdOniTSPXPOP0SMC9mAK5Kfc64NTW1s6TgRfnKF84qik.Tf_zDpQcsLeU97ZegBNV7eguA7sV_EVL81dl7SGF_e1sAq.vtcW_lpFCbZwRyFVzt2SNSK54O6gIy4FBXHtHFZzO9JJRUsgh9UpAVAGjKINqanunLQBJDMwQ6Qp7kB.ow8tUYrxZFr0J_LgA12DOTDIoVgn5SKIGB1hzGokYTemN1RL5DZ1z.1dkIAFjZeJKJNmMh5zWuLnb3Eq24YZLnNae9Q0aUXL5IxJnhV98nFUEZcRF8_slUzd5kPhBH1No67TWLLdveqslCE69OMDHZX9jOEJwxbTuRYb; basescan_pwd=4792:Qdxb:JnSaGTfjtdaESCnHwKYQyez3eEW52tE3kb9Ma4a1cP51JnKDpJfXsmCFO6GMM0+u; basescan_userid=pranav; basescan_autologin=True; __cflb=02DiuJ1fCRi484mKRwML12UraygpucsyTWc9pZJeZ3Txx; basescan_offset_datetime=+5.5",
-                        dnt: "1",
-                        priority: "u=0, i",
-                        referer: "https://basescan.org/",
-                        "sec-ch-ua": '"Chromium";v="131", "Not_A Brand";v="24"',
-                        "sec-ch-ua-arch": '"arm"',
-                        "sec-ch-ua-bitness": '"64"',
-                        "sec-ch-ua-full-version": '"131.0.6778.86"',
-                        "sec-ch-ua-full-version-list":
-                            '"Chromium";v="131.0.6778.86", "Not_A Brand";v="24.0.0.0"',
-                        "sec-ch-ua-mobile": "?0",
-                        "sec-ch-ua-model": '""',
-                        "sec-ch-ua-platform": '"macOS"',
-                        "sec-ch-ua-platform-version": '"15.1.0"',
                         "sec-fetch-dest": "document",
                         "sec-fetch-mode": "navigate",
                         "sec-fetch-site": "same-origin",
                         "sec-fetch-user": "?1",
                         "upgrade-insecure-requests": "1",
-                        "user-agent":
-                            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
                     },
                 }
             );
@@ -111,12 +102,11 @@ export default function ClaimPage() {
                 const name = await getBaseName(distributionId, recipientIndex);
                 setBaseName(name || "");
 
-                // Resolve Base name to address
                 if (name) {
                     const resolvedAddress = await fetchHtmlAndExtract(name);
                     setExpectedAddress(resolvedAddress);
                 }
-            } catch (err: any) {
+            } catch (err) {
                 console.error("Error checking distribution:", err);
                 setError("Failed to load distribution information");
             } finally {
@@ -135,7 +125,6 @@ export default function ClaimPage() {
                 throw new Error("Please connect your wallet first");
             }
 
-            // Check if connected wallet matches resolved address
             if (address.toLowerCase() !== expectedAddress) {
                 throw new Error(
                     "Connected wallet does not match the Base name"
@@ -200,7 +189,6 @@ export default function ClaimPage() {
             );
             setTransactionHash(result.hash);
 
-            // Wait for transaction confirmation
             await new Promise((resolve) => setTimeout(resolve, 5000));
 
             const claimed = await checkIfClaimed(
@@ -231,111 +219,168 @@ export default function ClaimPage() {
         address?.toLowerCase() !== expectedAddress;
 
     return (
-        <div className="flex flex-col min-h-screen font-sans dark:bg-background dark:text-white bg-white text-black">
-            <header className="pt-4 pr-4">
-                <div className="flex justify-end">
-                    <ConnectButton />
-                </div>
+        <div className="min-h-screen bg-gradient-to-br from-[#0051FF] to-[#3B82F6] flex flex-col items-center justify-center overflow-hidden relative">
+            <BackgroundAnimations />
+
+            <header className="absolute top-4 right-4 z-20">
+                <ConnectButton />
             </header>
 
-            <main className="flex-grow flex items-center justify-center p-4">
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 max-w-md w-full">
-                    <h1 className="text-2xl font-bold mb-6">
-                        Claim Your Shagun Share
-                    </h1>
+            <motion.div
+                className="text-center bg-white/10 backdrop-blur-md p-12 rounded-3xl shadow-2xl border border-white/20 relative z-10 w-full max-w-md"
+                initial={{ opacity: 0, y: -100, rotateX: 50 }}
+                animate={{ opacity: 1, y: 0, rotateX: 0 }}
+                transition={{ duration: 1, ease: "easeOut" }}
+            >
+                <motion.h1
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3, duration: 0.8 }}
+                    className="text-4xl font-bold text-white mb-6"
+                >
+                    Claim Your Shagun Share
+                </motion.h1>
 
-                    {isLoading && (
-                        <div className="mb-4 p-4 bg-gray-100 dark:bg-gray-700 rounded">
-                            <p>Loading distribution details...</p>
-                        </div>
-                    )}
+                {isLoading && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="mb-4 p-4 bg-white/20 rounded-lg text-white"
+                    >
+                        <p>Loading distribution details...</p>
+                    </motion.div>
+                )}
 
-                    {distributionInfo && (
-                        <div className="mb-4 p-4 bg-gray-100 dark:bg-gray-700 rounded">
-                            <p className="text-sm">
-                                Amount to claim:{" "}
-                                {formatEther(
-                                    distributionInfo.amountPerRecipient
-                                )}{" "}
-                                ETH
-                            </p>
-                            <p className="text-sm mt-2">
-                                Required Base Name: {baseName}
-                            </p>
-                            <p className="text-sm mt-2">
-                                Required Address: {expectedAddress}
-                            </p>
-                        </div>
-                    )}
+                {distributionInfo && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="mb-4 p-4 bg-white/20 rounded-lg text-white"
+                    >
+                        <p className="text-sm">
+                            Amount to claim:{" "}
+                            {formatEther(distributionInfo.amountPerRecipient)}{" "}
+                            ETH
+                        </p>
+                        <p className="text-sm mt-2">
+                            Required Base Name: {baseName}
+                        </p>
+                        <p className="text-sm mt-2">
+                            Required Address: {expectedAddress}
+                        </p>
+                    </motion.div>
+                )}
 
-                    {address && address.toLowerCase() !== expectedAddress && (
-                        <div className="mb-4 p-4 bg-red-100 dark:bg-red-900 rounded">
-                            <p>Connected wallet does not match the Base name</p>
-                        </div>
-                    )}
+                {address && address.toLowerCase() !== expectedAddress && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="mb-4 p-4 bg-red-400/20 rounded-lg text-white"
+                    >
+                        <p>Connected wallet does not match the Base name</p>
+                    </motion.div>
+                )}
 
-                    {transactionHash && (
-                        <div className="mb-4 p-4 bg-green-100 dark:bg-green-900 rounded">
-                            <p>Transaction submitted: </p>
-                            <a
-                                href={`https://base-sepolia.blockscout.com/tx/${transactionHash}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 break-all"
+                {transactionHash && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="mb-4 p-4 bg-green-400/20 rounded-lg text-white"
+                    >
+                        <p>Transaction submitted: </p>
+                        <a
+                            href={`https://base-sepolia.blockscout.com/tx/${transactionHash}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-yellow-400 hover:text-yellow-300 break-all"
+                        >
+                            {transactionHash}
+                        </a>
+                    </motion.div>
+                )}
+
+                {isAlreadyClaimed ? (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="p-4 bg-yellow-400/20 rounded-lg text-white"
+                    >
+                        <p>This share has already been claimed.</p>
+                    </motion.div>
+                ) : (
+                    <div className="space-y-6">
+                        {!isSignatureVerified ? (
+                            <motion.button
+                                onClick={verifySignature}
+                                disabled={isVerificationDisabled}
+                                className="w-full group overflow-hidden bg-yellow-400 text-blue-900 py-3 px-6 rounded-lg shadow-md 
+                                    flex items-center justify-center space-x-2
+                                    transition duration-300 ease-in-out
+                                    hover:bg-yellow-300 disabled:bg-gray-400
+                                    focus:outline-none focus:ring-2 focus:ring-yellow-500
+                                    transform hover:scale-105 active:scale-95"
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
                             >
-                                {transactionHash}
-                            </a>
-                        </div>
-                    )}
-
-                    {isAlreadyClaimed ? (
-                        <div className="p-4 bg-yellow-100 dark:bg-yellow-900 rounded">
-                            <p>This share has already been claimed.</p>
-                        </div>
-                    ) : (
-                        <div className="space-y-6">
-                            {!isSignatureVerified ? (
-                                <button
-                                    onClick={verifySignature}
-                                    disabled={isVerificationDisabled}
-                                    className="w-full px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-400"
-                                >
+                                <MailOpen className="w-5 h-5 mr-2" />
+                                <span className="font-semibold tracking-wide">
                                     {!isConnected
                                         ? "Connect Wallet to Verify"
                                         : address?.toLowerCase() !==
                                           expectedAddress
                                         ? "Connect Wallet Matching Base Name"
                                         : "Verify Wallet Ownership"}
-                                </button>
-                            ) : (
-                                <div className="p-4 bg-green-100 dark:bg-green-900 rounded">
-                                    <p>Wallet ownership verified!</p>
-                                </div>
-                            )}
-
-                            {error && (
-                                <p className="text-red-500 text-sm">{error}</p>
-                            )}
-
-                            <button
-                                onClick={handleClaim}
-                                disabled={
-                                    isLoading ||
-                                    isWritePending ||
-                                    !isConnected ||
-                                    !isSignatureVerified ||
-                                    address?.toLowerCase() !== expectedAddress
-                                }
-                                className="w-full px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 disabled:bg-gray-400"
+                                </span>
+                                <ArrowRight className="w-5 h-5 ml-2" />
+                            </motion.button>
+                        ) : (
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                className="p-4 bg-green-400/20 rounded-lg text-white"
                             >
+                                <p>Wallet ownership verified!</p>
+                            </motion.div>
+                        )}
+
+                        {error && (
+                            <motion.p
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="text-red-300 text-sm"
+                            >
+                                {error}
+                            </motion.p>
+                        )}
+
+                        <motion.button
+                            onClick={handleClaim}
+                            disabled={
+                                isLoading ||
+                                isWritePending ||
+                                !isConnected ||
+                                !isSignatureVerified ||
+                                address?.toLowerCase() !== expectedAddress
+                            }
+                            className="w-full group overflow-hidden bg-green-400 text-blue-900 py-3 px-6 rounded-lg shadow-md 
+                                flex items-center justify-center space-x-2
+                                transition duration-300 ease-in-out
+                                hover:bg-green-300 disabled:bg-gray-400
+                                focus:outline-none focus:ring-2 focus:ring-green-500
+                                transform hover:scale-105 active:scale-95"
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                        >
+                            <span className="font-semibold tracking-wide">
                                 {isLoading || isWritePending
                                     ? "Claiming..."
                                     : "Claim Share"}
-                            </button>
-                        </div>
-                    )}
-                </div>
-            </main>
+                            </span>
+                            <ArrowRight className="w-5 h-5 ml-2" />
+                        </motion.button>
+                    </div>
+                )}
+            </motion.div>
         </div>
     );
 }
