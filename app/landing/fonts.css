@@ -1,0 +1,31 @@
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari&family=Noto+Sans+Tamil&family=Noto+Sans+Telugu&family=Noto+Sans+Bengali&family=Noto+Sans+Malayalam&family=Noto+Sans+Kannada&display=swap");
+
+.font-devanagari {
+    font-family: "Noto Sans Devanagari", sans-serif;
+    color: white;
+}
+
+.font-tamil {
+    font-family: "Noto Sans Tamil", sans-serif;
+    color: white;
+}
+
+.font-telugu {
+    font-family: "Noto Sans Telugu", sans-serif;
+    color: white;
+}
+
+.font-bengali {
+    font-family: "Noto Sans Bengali", sans-serif;
+    color: white;
+}
+
+.font-malayalam {
+    font-family: "Noto Sans Malayalam", sans-serif;
+    color: white;
+}
+
+.font-kannada {
+    font-family: "Noto Sans Kannada", sans-serif;
+    color: white;
+}
