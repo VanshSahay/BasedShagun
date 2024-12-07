@@ -9,6 +9,20 @@ import { verifyMessage, formatEther } from "viem";
 import { motion } from "framer-motion";
 import BackgroundAnimations from "../../../components/Background-animations";
 import { ArrowRight, MailOpen } from "lucide-react";
+import { NFTMintCardDefault } from "@coinbase/onchainkit/nft";
+import {
+    ConnectWallet,
+    Wallet,
+    WalletDropdown,
+    WalletDropdownDisconnect,
+} from "@coinbase/onchainkit/wallet";
+import {
+    Address,
+    Avatar,
+    Name,
+    Identity,
+    EthBalance,
+} from "@coinbase/onchainkit/identity";
 
 // Define the type for distribution info
 interface DistributionInfo {
@@ -224,6 +238,25 @@ export default function ClaimPage() {
 
             <header className="absolute top-4 right-4 z-20">
                 <ConnectButton />
+                <Wallet>
+                    <ConnectWallet>
+                        <Avatar className="h-6 w-6" />
+                        <Name />
+                    </ConnectWallet>
+                    <WalletDropdown>
+                        <Identity
+                            className="px-4 pt-3 pb-2"
+                            hasCopyAddressOnClick
+                        >
+                            <Avatar />
+                            <Name />
+                            <Address />
+                            <EthBalance />
+                        </Identity>
+                        <WalletDropdownDisconnect />
+                    </WalletDropdown>
+                </Wallet>
+                <NFTMintCardDefault contractAddress="0xb4703a3a73aec16e764cbd210b0fde9efdab8941" />
             </header>
 
             <motion.div

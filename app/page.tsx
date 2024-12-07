@@ -8,6 +8,20 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mail } from "lucide-react";
 import BackgroundAnimations from "@/app/components/Background-animations";
+import { FundButton } from "@coinbase/onchainkit/fund";
+import {
+    ConnectWallet,
+    Wallet,
+    WalletDropdown,
+    WalletDropdownDisconnect,
+} from "@coinbase/onchainkit/wallet";
+import {
+    Address,
+    Avatar,
+    Name,
+    Identity,
+    EthBalance,
+} from "@coinbase/onchainkit/identity";
 
 const indianLanguages = [
     { name: "English", text: "Shagun", font: "" },
@@ -196,7 +210,25 @@ export default function CreateDistribution() {
                             required
                         />
                     </div>
-
+                    <FundButton />
+                    <Wallet>
+                        <ConnectWallet>
+                            <Avatar className="h-6 w-6" />
+                            <Name />
+                        </ConnectWallet>
+                        <WalletDropdown>
+                            <Identity
+                                className="px-4 pt-3 pb-2"
+                                hasCopyAddressOnClick
+                            >
+                                <Avatar />
+                                <Name />
+                                <Address />
+                                <EthBalance />
+                            </Identity>
+                            <WalletDropdownDisconnect />
+                        </WalletDropdown>
+                    </Wallet>
                     <div>
                         <label className="block text-sm font-medium mb-2 text-white">
                             Number of Recipients
