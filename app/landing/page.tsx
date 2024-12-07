@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import BackgroundAnimations from "../components/Background-animations";
-import { Gift } from "lucide-react";
+import { Mail } from "lucide-react";
 
 const indianLanguages = [
     { name: "English", text: "Shagun", font: "" },
@@ -131,7 +131,7 @@ const BasedShagunLandingPage = () => {
                     <span className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></span>
 
                     <div className="flex items-center">
-                        <Gift className="w-5 h-5 mr-2 text-blue-900 group-hover:rotate-12 transition-transform duration-300" />
+                        <Mail className="w-5 h-5 mr-2 text-blue-900 group-hover:rotate-12 transition-transform duration-300" />
                         <span className="font-semibold tracking-wide">
                             Gift Shagun
                         </span>
