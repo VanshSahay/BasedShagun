@@ -44,33 +44,19 @@ export default function ClaimPage() {
 
     const { signMessageAsync } = useSignMessage();
 
+    // Updated fetchHtmlAndExtract function in your component
     const fetchHtmlAndExtract = async (baseName: string) => {
         try {
             const response = await fetch(
-                `https://cors-anywhere.herokuapp.com/https://basescan.org/name-lookup-search?id=${baseName}`,
-                {
-                    method: "GET",
-                    headers: {
-                        accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-                        "accept-language": "en-US,en;q=0.9",
-                        "cache-control": "max-age=0",
-                        "sec-fetch-dest": "document",
-                        "sec-fetch-mode": "navigate",
-                        "sec-fetch-site": "same-origin",
-                        "sec-fetch-user": "?1",
-                        "upgrade-insecure-requests": "1",
-                    },
-                }
+                `/api/resolve-base-name?id=${baseName}`
             );
+            const data = await response.json();
 
-            const text = await response.text();
-            const regex = /<span id="spanBSCAddress">([\s\S]*?)<\/span>/;
-            const match = text.match(regex);
-
-            if (match && match[1]) {
-                return match[1].toLowerCase();
+            if (!response.ok) {
+                throw new Error(data.error || "Base name resolution failed");
             }
-            throw new Error("Base name resolution failed");
+
+            return data.address;
         } catch (error) {
             console.error("Error fetching HTML:", error);
             throw error;
