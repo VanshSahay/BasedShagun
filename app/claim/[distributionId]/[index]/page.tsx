@@ -61,7 +61,7 @@ export default function ClaimPage() {
     const fetchHtmlAndExtract = async (baseName: string) => {
         try {
             const response = await fetch(
-                `https://cors-anywhere.herokuapp.com/https://basescan.org/name-lookup-search?id=${baseName}`,
+                `https://test.cors.workers.dev/?https://basescan.org/name-lookup-search?id=${baseName}`,
                 {
                     method: "GET",
                     headers: {
@@ -237,7 +237,6 @@ export default function ClaimPage() {
             <BackgroundAnimations />
 
             <header className="absolute top-4 right-4 z-20">
-                <ConnectButton />
                 <Wallet>
                     <ConnectWallet>
                         <Avatar className="h-6 w-6" />
@@ -256,7 +255,6 @@ export default function ClaimPage() {
                         <WalletDropdownDisconnect />
                     </WalletDropdown>
                 </Wallet>
-                <NFTMintCardDefault contractAddress="0xb4703a3a73aec16e764cbd210b0fde9efdab8941" />
             </header>
 
             <motion.div
@@ -271,7 +269,7 @@ export default function ClaimPage() {
                     transition={{ delay: 0.3, duration: 0.8 }}
                     className="text-4xl font-bold text-white mb-6"
                 >
-                    Claim Your Shagun Share
+                    Claim Your Shagun
                 </motion.h1>
 
                 {isLoading && (
